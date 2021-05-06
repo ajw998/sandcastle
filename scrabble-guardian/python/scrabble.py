@@ -1,9 +1,11 @@
+from random import Random, choice
 import collections
+import functools
 import itertools
+from os import path
 import random
 import string
 import unittest
-import functools
 
 TILES = {
   'a': 9,
@@ -64,6 +66,7 @@ LETTER_SCORE = {
 }
 
 def calculate_word_score(word, score_table=LETTER_SCORE):
+    """Return the word's scrabble score"""
     score = 0
     for letter in word:
         if is_valid_letter(letter):
@@ -73,7 +76,7 @@ def calculate_word_score(word, score_table=LETTER_SCORE):
     return score
 
 def calculate_word_score_triple(word, score_table=LETTER_SCORE):
-    """Return the score of a word if the largest character can score a triple."""
+    """Return the word's scrabble score if the largest character can score a triple."""
     score = 0
     largest_char = get_highest_scoring_char(word)
     largest_char_index = word.find(largest_char)
@@ -107,7 +110,7 @@ def pick_random(count=7, entry_list=list(string.ascii_lowercase),
     """
     random_picks = []
     for _ in itertools.repeat(None, count):
-        random_choice = random.choice(entry_list)
+        random_choice = choice(entry_list)
         random_picks.append(random_choice)
         if deletion:
             entry_list.remove(random_choice)
@@ -146,12 +149,14 @@ def can_create_word(rack, scrabble_word):
     word_counter = collections.Counter(scrabble_word)
     return not((word_counter - rack_counter))
 
-def search_valid_creation(rack='', dictionary_path='../dictionary-guardian.txt'):
+def search_valid_creation(rack=[], dictionary_path='../dictionary-guardian.txt'):
     valid_list = []
+    assert path.exists(dictionary_path), "Cannot find dictionary file"
     with open(dictionary_path, 'r') as file:
         lines = (word.strip().lower() for word in file)
         words = [ word for word in lines ]
     for scrabble_word in words:
+        assert len(rack) > 0, "Empty word rack"
         if can_create_word(rack, scrabble_word):
             valid_list.append(scrabble_word)
     return valid_list
@@ -165,7 +170,7 @@ def compile_score_list(word_list, method=calculate_word_score,
     pfn = functools.partial(scoring_heuristic, score_table=score_table)
     return list(map(lambda word: pfn(fn=method, word=word), word_list))
 
-def get_largest_word(word_list, fn=calculate_word_score):
+def get_highest_scoring_word(word_list, fn=calculate_word_score):
     """Return the highest scoring word for list.
 
     Given a word list, returns the word that scores the highest. Users may define
@@ -206,6 +211,15 @@ class TestScrabble(unittest.TestCase):
         self.assertEqual(get_highest_scoring_char('python'), 'y')
         self.assertEqual(get_highest_scoring_char('zz'), 'z')
         self.assertEqual(get_highest_scoring_char('zest'), 'z')
+
+    def test_random_pick(self):
+        self.assertCountEqual(pick_random(7, entry_list=['a', 'b', 'c', 'd', 'e',
+                                                    'f', 'g'], deletion=True),
+                              ['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+
+    def test_highest_scoring_word(self):
+        self.assertEqual(get_highest_scoring_word(search_valid_creation(['x', 'y', 'l', 'o', 'p', 'h',
+                                              'o', 'n', 'e'])), 'xylophone')
 
 if __name__ == '__main__':
     unittest.main()
